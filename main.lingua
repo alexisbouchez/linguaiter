@@ -1,2 +1,2 @@
-let greeting = "Hello, world!";
+let greeting = "Hello, world!\npouet pouet\n";
 print(greeting);

@@ -158,6 +158,24 @@ function validate(doc: TextDocument): Diagnostic[] {
     if (current().type === TokenType.Semicolon) advance();
   }
 
+  // Check escape sequences inside a string token
+  function checkEscapes(tok: Token) {
+    const inner = tok.text.slice(1, -1); // strip quotes
+    for (let j = 0; j < inner.length; j++) {
+      if (inner[j] === '\\') {
+        if (j + 1 >= inner.length) {
+          diagnostics.push(makeDiag(tok.offset + 1 + j, 1, "Incomplete escape sequence at end of string", DiagnosticSeverity.Error));
+        } else {
+          const ch = inner[j + 1];
+          if (!"ntr\\\"0".includes(ch)) {
+            diagnostics.push(makeDiag(tok.offset + 1 + j, 2, `Unknown escape sequence '\\${ch}'`, DiagnosticSeverity.Warning));
+          }
+          j++; // skip the escaped char
+        }
+      }
+    }
+  }
+
   while (current().type !== TokenType.EOF) {
     const tok = advance();
 
@@ -207,6 +225,7 @@ function validate(doc: TextDocument): Diagnostic[] {
         recover();
         continue;
       }
+      checkEscapes(str);
       advance();
 
       const semi = current();
@@ -239,6 +258,7 @@ function validate(doc: TextDocument): Diagnostic[] {
         continue;
       }
       if (arg.type === TokenType.String) {
+        checkEscapes(arg);
         advance();
       } else if (arg.type === TokenType.Ident) {
         if (!declaredVars.has(arg.text)) {

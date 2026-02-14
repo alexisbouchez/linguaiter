@@ -21,8 +21,11 @@ $(VSIX): vscode
 vscode-install: $(VSIX)
 	code --install-extension $(VSIX)
 
+install: all $(VSIX)
+	code --install-extension $(VSIX)
+
 clean:
 	rm -f $(TARGET)
 	rm -rf lingua-vscode/out $(VSIX)
 
-.PHONY: all vscode vscode-install clean
+.PHONY: all vscode vscode-install install clean

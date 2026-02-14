@@ -2,7 +2,13 @@
 
 A minimal compiler for the Lingua language, targeting ARM64 macOS native binaries.
 
-## Build
+## Build & Install
+
+```bash
+make install
+```
+
+This builds the compiler, packages the VS Code extension, and installs it. To just build without installing the extension:
 
 ```bash
 make
@@ -26,10 +32,12 @@ Or compile to a standalone binary:
 ## Language
 
 ```lingua
-let greeting = "Hello, world!";
+let greeting = "Hello, world!\n";
 print(greeting);
-print("Hi!");
+print("Hi!\n");
 ```
+
+Supported escape sequences: `\n`, `\t`, `\r`, `\\`, `\"`, `\0`
 
 ## Shell Completions
 
@@ -49,7 +57,12 @@ lingua completions fish | source
 The `lingua-vscode/` directory contains a VS Code extension with syntax highlighting, diagnostics, completions, and hover support.
 
 ```bash
-cd lingua-vscode
-npm run package
-code --install-extension lingua-0.1.0.vsix
+make install
+```
+
+Or build and install separately:
+
+```bash
+make vscode
+make vscode-install
 ```

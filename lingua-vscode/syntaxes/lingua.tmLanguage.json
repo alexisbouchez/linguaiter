@@ -18,8 +18,19 @@
       "name": "support.function.lingua"
     },
     "string": {
-      "match": "\"[^\"]*\"",
-      "name": "string.quoted.double.lingua"
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.lingua",
+      "patterns": [
+        {
+          "match": "\\\\[ntr\\\\\"0]",
+          "name": "constant.character.escape.lingua"
+        },
+        {
+          "match": "\\\\.",
+          "name": "invalid.illegal.unknown-escape.lingua"
+        }
+      ]
     },
     "operator": {
       "match": "=",
