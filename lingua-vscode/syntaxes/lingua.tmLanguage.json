@@ -1,0 +1,30 @@
+{
+  "scopeName": "source.lingua",
+  "patterns": [
+    { "include": "#function-call" },
+    { "include": "#string" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "function-call": {
+      "match": "\\b(print)\\b",
+      "name": "support.function.lingua"
+    },
+    "string": {
+      "match": "\"[^\"]*\"",
+      "name": "string.quoted.double.lingua"
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "match": "[()]",
+          "name": "punctuation.bracket.lingua"
+        },
+        {
+          "match": ";",
+          "name": "punctuation.terminator.lingua"
+        }
+      ]
+    }
+  }
+}

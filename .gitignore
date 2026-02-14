@@ -1,3 +1,8 @@
 lingua
 main
 *.o
+
+# VSCode extension
+lingua-vscode/node_modules/
+lingua-vscode/out/
+*.vsix
