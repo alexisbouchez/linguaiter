@@ -8,6 +8,7 @@ const char *value_type_name(ValueType vt) {
         case VAL_STRING: return "string";
         case VAL_INT:    return "int";
         case VAL_FLOAT:  return "float";
+        case VAL_BOOL:   return "bool";
         default:         return "unknown";
     }
 }
@@ -60,8 +61,14 @@ static void parse_value(Lexer *lexer, char **out, int *out_len, ValueType *out_v
         (*out)[tok.length] = '\0';
         *out_len = tok.length;
         *out_vtype = VAL_FLOAT;
+    } else if (tok.type == TOKEN_BOOL) {
+        *out = malloc(tok.length + 1);
+        memcpy(*out, tok.start, tok.length);
+        (*out)[tok.length] = '\0';
+        *out_len = tok.length;
+        *out_vtype = VAL_BOOL;
     } else {
-        fprintf(stderr, "error: expected value (string, int, or float)\n");
+        fprintf(stderr, "error: expected value (string, int, float, or bool)\n");
         exit(1);
     }
 }
@@ -107,6 +114,8 @@ ASTNode *parse(Lexer *lexer) {
                     annotated_type = VAL_FLOAT;
                 } else if (type_tok.length == 6 && memcmp(type_tok.start, "string", 6) == 0) {
                     annotated_type = VAL_STRING;
+                } else if (type_tok.length == 4 && memcmp(type_tok.start, "bool", 4) == 0) {
+                    annotated_type = VAL_BOOL;
                 } else {
                     fprintf(stderr, "error: unknown type '%.*s'\n", type_tok.length, type_tok.start);
                     exit(1);
@@ -155,14 +164,15 @@ ASTNode *parse(Lexer *lexer) {
                 node->string = process_escapes(arg.start, arg.length, &node->string_len);
                 node->var_name = NULL;
                 node->is_var_ref = 0;
-            } else if (arg.type == TOKEN_INT || arg.type == TOKEN_FLOAT) {
+            } else if (arg.type == TOKEN_INT || arg.type == TOKEN_FLOAT || arg.type == TOKEN_BOOL) {
                 node->string = malloc(arg.length + 1);
                 memcpy(node->string, arg.start, arg.length);
                 node->string[arg.length] = '\0';
                 node->string_len = arg.length;
                 node->var_name = NULL;
                 node->is_var_ref = 0;
-                node->value_type = (arg.type == TOKEN_INT) ? VAL_INT : VAL_FLOAT;
+                node->value_type = (arg.type == TOKEN_INT) ? VAL_INT :
+                                   (arg.type == TOKEN_FLOAT) ? VAL_FLOAT : VAL_BOOL;
             } else if (arg.type == TOKEN_IDENT) {
                 node->string = NULL;
                 node->string_len = 0;

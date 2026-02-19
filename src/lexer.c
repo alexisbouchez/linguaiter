@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include <ctype.h>
+#include <string.h>
 
 void lexer_init(Lexer *l, const char *source) {
     l->source = source;
@@ -98,9 +99,14 @@ Token lexer_next(Lexer *l) {
         int start = l->pos;
         while (isalnum(l->source[l->pos]) || l->source[l->pos] == '_')
             l->pos++;
-        tok.type = TOKEN_IDENT;
         tok.start = &l->source[start];
         tok.length = l->pos - start;
+        if ((tok.length == 4 && memcmp(tok.start, "true", 4) == 0) ||
+            (tok.length == 5 && memcmp(tok.start, "false", 5) == 0)) {
+            tok.type = TOKEN_BOOL;
+        } else {
+            tok.type = TOKEN_IDENT;
+        }
         return tok;
     }
 

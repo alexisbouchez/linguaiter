@@ -13,6 +13,7 @@ typedef enum {
     VAL_STRING,
     VAL_INT,
     VAL_FLOAT,
+    VAL_BOOL,
 } ValueType;
 
 typedef struct ASTNode {

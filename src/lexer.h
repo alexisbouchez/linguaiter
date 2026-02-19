@@ -6,6 +6,7 @@ typedef enum {
     TOKEN_STRING,
     TOKEN_INT,
     TOKEN_FLOAT,
+    TOKEN_BOOL,
     TOKEN_LPAREN,
     TOKEN_RPAREN,
     TOKEN_SEMICOLON,
