@@ -56,6 +56,14 @@ Token lexer_next(Lexer *l) {
         return tok;
     }
 
+    if (c == ':') {
+        tok.type = TOKEN_COLON;
+        tok.start = &l->source[l->pos];
+        tok.length = 1;
+        l->pos++;
+        return tok;
+    }
+
     if (c == '"') {
         l->pos++; /* skip opening quote */
         int start = l->pos;
@@ -66,6 +74,23 @@ Token lexer_next(Lexer *l) {
         tok.length = l->pos - start;
         if (l->source[l->pos] == '"')
             l->pos++; /* skip closing quote */
+        return tok;
+    }
+
+    if (isdigit(c)) {
+        int start = l->pos;
+        while (isdigit(l->source[l->pos]))
+            l->pos++;
+        if (l->source[l->pos] == '.' && isdigit(l->source[l->pos + 1])) {
+            l->pos++; /* skip '.' */
+            while (isdigit(l->source[l->pos]))
+                l->pos++;
+            tok.type = TOKEN_FLOAT;
+        } else {
+            tok.type = TOKEN_INT;
+        }
+        tok.start = &l->source[start];
+        tok.length = l->pos - start;
         return tok;
     }
 

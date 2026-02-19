@@ -4,10 +4,13 @@
 typedef enum {
     TOKEN_IDENT,
     TOKEN_STRING,
+    TOKEN_INT,
+    TOKEN_FLOAT,
     TOKEN_LPAREN,
     TOKEN_RPAREN,
     TOKEN_SEMICOLON,
     TOKEN_EQUALS,
+    TOKEN_COLON,
     TOKEN_EOF,
 } TokenType;
 

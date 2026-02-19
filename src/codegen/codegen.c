@@ -25,6 +25,7 @@ int codegen(ASTNode *ast, const char *output_path) {
     int *sym_lengths = malloc(sym_cap * sizeof(int));
     int *sym_is_const = malloc(sym_cap * sizeof(int));
     int *sym_mutated = malloc(sym_cap * sizeof(int));
+    int *sym_value_types = malloc(sym_cap * sizeof(int));
 
     for (ASTNode *n = ast; n; n = n->next) {
         if (n->type == NODE_VAR_DECL) {
@@ -35,12 +36,14 @@ int codegen(ASTNode *ast, const char *output_path) {
                 sym_lengths = realloc(sym_lengths, sym_cap * sizeof(int));
                 sym_is_const = realloc(sym_is_const, sym_cap * sizeof(int));
                 sym_mutated = realloc(sym_mutated, sym_cap * sizeof(int));
+                sym_value_types = realloc(sym_value_types, sym_cap * sizeof(int));
             }
             sym_names[sym_count] = n->var_name;
             sym_values[sym_count] = n->string;
             sym_lengths[sym_count] = n->string_len;
             sym_is_const[sym_count] = n->is_const;
             sym_mutated[sym_count] = 0;
+            sym_value_types[sym_count] = n->value_type;
             sym_count++;
         } else if (n->type == NODE_ASSIGN) {
             int found = 0;
@@ -48,7 +51,13 @@ int codegen(ASTNode *ast, const char *output_path) {
                 if (strcmp(n->var_name, sym_names[j]) == 0) {
                     if (sym_is_const[j]) {
                         fprintf(stderr, "error: cannot reassign const variable '%s'\n", n->var_name);
-                        free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated);
+                        free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated); free(sym_value_types);
+                        return 1;
+                    }
+                    if (sym_value_types[j] != (int)n->value_type) {
+                        fprintf(stderr, "error: type mismatch: variable '%s' has type '%s', cannot assign '%s'\n",
+                                n->var_name, value_type_name(sym_value_types[j]), value_type_name(n->value_type));
+                        free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated); free(sym_value_types);
                         return 1;
                     }
                     sym_values[j] = n->string;
@@ -60,7 +69,7 @@ int codegen(ASTNode *ast, const char *output_path) {
             }
             if (!found) {
                 fprintf(stderr, "error: undefined variable '%s'\n", n->var_name);
-                free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated);
+                free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated); free(sym_value_types);
                 return 1;
             }
         } else if (n->type == NODE_PRINT && n->is_var_ref) {
@@ -77,7 +86,7 @@ int codegen(ASTNode *ast, const char *output_path) {
             }
             if (!found) {
                 fprintf(stderr, "error: undefined variable '%s'\n", n->var_name);
-                free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated);
+                free(sym_names); free(sym_values); free(sym_lengths); free(sym_is_const); free(sym_mutated); free(sym_value_types);
                 return 1;
             }
         }
@@ -93,6 +102,7 @@ int codegen(ASTNode *ast, const char *output_path) {
     free(sym_lengths);
     free(sym_is_const);
     free(sym_mutated);
+    free(sym_value_types);
 
     /* Collect strings from print statements */
     int string_count = 0;
