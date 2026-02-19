@@ -43,7 +43,7 @@ The compiler follows a classic pipeline: **source -> lexer -> parser (AST) -> co
 - **`src/lexer.c/h`** - Tokenizer. Produces tokens for identifiers, strings, ints (decimal and hex `0x`), floats, bools, arithmetic ops (`+`, `-`, `*`, `/`, `%`), comparison ops (`==`, `!=`, `>`, `>=`, `<`, `<=`), bitwise ops (`&`, `|`, `^`, `~`, `<<`, `>>`), compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`), increment/decrement (`++`, `--`), `.` for member access, `[]` for indexing/slicing, and keywords (`break`, `continue`, `import`, `from`, `pub`). Handles escape sequences (including `\{`, `\}`), `//` line comments, `/* */` block comments, and position tracking for error reporting.
 - **`src/parser.c/h`** - Recursive descent parser. Builds an AST with a recursive `Expr` type (tagged union) supporting literals, variable references, binary operations (arithmetic, comparison, logical, bitwise), unary operations (`-`, `~`), member access (`obj.field`), indexing (`s[i]`), slicing (`s[i:j]`), and function calls in expressions (`EXPR_FN_CALL`). Precedence chain: `parse_or` > `parse_and` > `parse_comparison` > `parse_bitor` > `parse_bitxor` > `parse_bitand` > `parse_shift` > `parse_additive` > `parse_multiplicative` > `parse_unary` > `parse_postfix` > `parse_primary`. Includes `parse_interpolated_string()` for `"{expr}"` interpolation, `parse_update_clause()` for for-loop update with `++`/`--`/compound assignment, `try_parse_new_only()` for `new ClassName(...)` on RHS (all other function/method calls use `EXPR_FN_CALL` in expressions). Supports `NODE_BREAK`, `NODE_CONTINUE`, `NODE_IMPORT`, `is_pub` flag, and `parse_scope_depth`/`parse_loop_depth` tracking.
 - **`src/codegen.h`** - Public codegen interface. Declares `codegen()` used by `main.c`.
-- **`src/codegen/codegen.c`** - Platform-agnostic codegen entry point. Recursively evaluates `Expr` trees at compile time via `eval_expr()`. Supports arithmetic with int/float type promotion, string concatenation with `+` (auto-converts non-string operand), comparison operators, logical operators, bitwise operators (int-only), unary negation and bitwise NOT, string indexing/slicing, member access on objects, and `EXPR_FN_CALL` evaluation (via globals `g_ft`, `g_ct`, `g_prints`). Uses a `SymTable` with parent-chain scoping, `EvalResult` values (including `VAL_OBJECT` with `ObjData`), a `ClassTable` for class definitions (with inheritance field flattening), `eval_new_expr()` for object construction, and `evaluate_method_call()` for method dispatch. `ReturnCtx` tracks `has_return`, `has_break`, and `has_continue` for control flow. Built-in string functions: `len`, `trim`, `contains`, `replace`, `to_upper`, `to_lower`, `starts_with`, `ends_with`, `index_of`, `char_at`, `substr`. Recursion supported with a depth limit of 1000. Dispatches to platform-specific backend for binary emission.
+- **`src/codegen/codegen.c`** - Platform-agnostic codegen entry point. Recursively evaluates `Expr` trees at compile time via `eval_expr()`. Supports arithmetic with int/float type promotion, string concatenation with `+` (auto-converts non-string operand), comparison operators, logical operators, bitwise operators (int-only), unary negation and bitwise NOT, string indexing/slicing, member access on objects, and `EXPR_FN_CALL` evaluation (via globals `g_ft`, `g_ct`, `g_prints`). Uses a `SymTable` with parent-chain scoping, `EvalResult` values (including `VAL_OBJECT` with `ObjData`), a `ClassTable` for class definitions (with inheritance field flattening), `eval_new_expr()` for object construction, and `evaluate_method_call()` for method dispatch. `ReturnCtx` tracks `has_return`, `has_break`, and `has_continue` for control flow. Standard library string functions (`len`, `trim`, `contains`, `replace`, `to_upper`, `to_lower`, `starts_with`, `ends_with`, `index_of`, `char_at`, `substr`) live in the `"std/string"` stdlib module — resolved in-compiler (no file), gated behind explicit import via `g_stdlib_imported_flags`. User-defined functions shadow stdlib. Recursion supported with a depth limit of 1000. Dispatches to platform-specific backend for binary emission.
 - **`src/codegen/elf_x86_64.c`** - Linux x86-64 backend. Emits ELF binary with direct syscalls (no libc). Base address 0x400000.
 - **`src/codegen/macho_arm64.c`** - macOS ARM64 backend. Emits Mach-O binary with full headers, segments, load commands, and symbol table. Page alignment 16384.
 - **`src/codegen/codegen_internal.h`** - Shared `Buffer` struct and write utilities (`buf_init`, `buf_write`, `buf_write8/16/32/64`, `buf_pad_to`, `buf_free`).
@@ -313,7 +313,12 @@ match (<expr>) {
 
 ### String Operations
 
-**Built-in functions:**
+String functions live in the `std/string` standard library module and must be explicitly imported before use:
+
+```
+import { len, trim } from "std/string";
+import { len, trim, contains, replace, to_upper, to_lower, starts_with, ends_with, index_of, char_at, substr } from "std/string";
+```
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -328,6 +333,8 @@ match (<expr>) {
 | `index_of(s, sub)` | `string, string -> int` | Index of first occurrence (-1 if not found) |
 | `char_at(s, i)` | `string, int -> string` | Single character at index |
 | `substr(s, start, end)` | `string, int, int -> string` | Substring from start to end (exclusive) |
+
+User-defined functions with the same name as a stdlib function shadow the stdlib version.
 
 **Indexing and slicing:**
 

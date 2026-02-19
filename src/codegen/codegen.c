@@ -240,6 +240,37 @@ static FnTable *g_ft;
 static ClassTable *g_ct;
 static PrintList *g_prints;
 
+/* ================================================================
+ * Standard library import tracking
+ * ================================================================ */
+
+static const char *g_stdlib_string_fns[] = {
+    "len", "trim", "contains", "replace", "to_upper", "to_lower",
+    "starts_with", "ends_with", "index_of", "char_at", "substr"
+};
+#define STDLIB_STRING_FN_COUNT 11
+static char g_stdlib_imported_flags[STDLIB_STRING_FN_COUNT];
+
+static void stdlib_reset(void) {
+    memset(g_stdlib_imported_flags, 0, sizeof(g_stdlib_imported_flags));
+}
+
+static int stdlib_fn_index(const char *name) {
+    for (int i = 0; i < STDLIB_STRING_FN_COUNT; i++)
+        if (strcmp(g_stdlib_string_fns[i], name) == 0) return i;
+    return -1;
+}
+
+static int stdlib_fn_is_imported(const char *name) {
+    int idx = stdlib_fn_index(name);
+    return idx >= 0 && g_stdlib_imported_flags[idx];
+}
+
+static void stdlib_fn_import(const char *name) {
+    int idx = stdlib_fn_index(name);
+    if (idx >= 0) g_stdlib_imported_flags[idx] = 1;
+}
+
 static EvalResult eval_expr(Expr *expr, SymTable *st);
 static char *eval_to_string(EvalResult *r, int *out_len);
 static int evaluate_fn_call(FnTable *ft, ClassTable *ct, SymTable *outer_st,
@@ -1474,14 +1505,16 @@ static int evaluate_fn_call(FnTable *ft, ClassTable *ct, SymTable *outer_st,
                             char **arg_names,
                             char **ret_value, int *ret_len, ValueType *ret_type,
                             PrintList *prints) {
-    /* Check built-in string functions first */
-    if (eval_builtin_string_fn(fn_name, call_loc, arg_count, arg_values,
-                               arg_lengths, arg_types, ret_value, ret_len, ret_type))
-        return 0;
-
+    /* User-defined functions take priority over stdlib */
     FnEntry *fn = fn_table_find(ft, fn_name);
-    if (!fn)
+    if (!fn) {
+        /* Fall back to stdlib built-ins if imported */
+        if (stdlib_fn_is_imported(fn_name) &&
+            eval_builtin_string_fn(fn_name, call_loc, arg_count, arg_values,
+                                   arg_lengths, arg_types, ret_value, ret_len, ret_type))
+            return 0;
         diag_emit(call_loc, DIAG_ERROR, "undefined function '%s'", fn_name);
+    }
 
     ASTNode *decl = fn->decl;
 
@@ -1704,6 +1737,18 @@ static void process_imports(ASTNode *ast, const char *source_file,
     for (ASTNode *n = ast; n; n = n->next) {
         if (n->type != NODE_IMPORT) continue;
 
+        /* Handle stdlib modules (resolved in-compiler, no file needed) */
+        if (strcmp(n->import_path, "std/string") == 0) {
+            for (int i = 0; i < n->import_name_count; i++) {
+                const char *name = n->import_names[i];
+                if (stdlib_fn_index(name) < 0)
+                    diag_emit(n->loc, DIAG_ERROR, "'%s' not found in module '%s'",
+                              name, n->import_path);
+                stdlib_fn_import(name);
+            }
+            continue;
+        }
+
         ASTNode *imported_ast = NULL;
         const char *imported_source = NULL;
         const char *imported_filename = NULL;
@@ -1836,6 +1881,8 @@ static void process_imports(ASTNode *ast, const char *source_file,
 }
 
 int codegen(ASTNode *ast, const char *output_path, const char *source_file) {
+    stdlib_reset();
+
     /* Pass 0: process imports */
     if (source_file) {
         char *source_copy = strdup(source_file);
